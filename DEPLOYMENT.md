@@ -9,7 +9,7 @@ Railway provides the easiest deployment with persistent services and automatic r
 - GitHub account
 - Railway account (sign up at https://railway.app)
 - Alchemy API key (get from https://www.alchemy.com/)
-- Your Telegram credentials (already have: bot token `7989561870:AAG-W3B_DBIC78BM3Coe0rUdJV3_B-X0gzE`, chat ID `1563550509`)
+- Your Telegram credentials (already have: bot token `YOUR_TELEGRAM_BOT_TOKEN`, chat ID `YOUR_TELEGRAM_CHAT_ID`)
 
 ### 2. Deploy to Railway
 
@@ -35,8 +35,8 @@ Railway provides the easiest deployment with persistent services and automatic r
    - Add these variables:
      ```
      ALCHEMY_API_KEY=your_alchemy_api_key
-     TELEGRAM_BOT_TOKEN=7989561870:AAG-W3B_DBIC78BM3Coe0rUdJV3_B-X0gzE
-     TELEGRAM_CHAT_ID=1563550509
+     TELEGRAM_BOT_TOKEN=YOUR_TELEGRAM_BOT_TOKEN
+     TELEGRAM_CHAT_ID=YOUR_TELEGRAM_CHAT_ID
      ```
 
 4. **Deploy:**
@@ -58,8 +58,8 @@ railway init
 
 # Set environment variables
 railway variables set ALCHEMY_API_KEY=your_key
-railway variables set TELEGRAM_BOT_TOKEN=7989561870:AAG-W3B_DBIC78BM3Coe0rUdJV3_B-X0gzE
-railway variables set TELEGRAM_CHAT_ID=1563550509
+railway variables set TELEGRAM_BOT_TOKEN=YOUR_TELEGRAM_BOT_TOKEN
+railway variables set TELEGRAM_CHAT_ID=YOUR_TELEGRAM_CHAT_ID
 
 # Deploy
 railway up
@@ -118,8 +118,8 @@ nano .env
 
 # Add your keys:
 # ALCHEMY_API_KEY=your_key
-# TELEGRAM_BOT_TOKEN=7989561870:AAG-W3B_DBIC78BM3Coe0rUdJV3_B-X0gzE
-# TELEGRAM_CHAT_ID=1563550509
+# TELEGRAM_BOT_TOKEN=YOUR_TELEGRAM_BOT_TOKEN
+# TELEGRAM_CHAT_ID=YOUR_TELEGRAM_CHAT_ID
 
 # Load environment
 export $(cat .env | xargs)
@@ -149,8 +149,8 @@ Type=simple
 User=your-user
 WorkingDirectory=/home/your-user/polymarket-bot/realtime_scanner
 Environment="ALCHEMY_API_KEY=your_key"
-Environment="TELEGRAM_BOT_TOKEN=7989561870:AAG-W3B_DBIC78BM3Coe0rUdJV3_B-X0gzE"
-Environment="TELEGRAM_CHAT_ID=1563550509"
+Environment="TELEGRAM_BOT_TOKEN=YOUR_TELEGRAM_BOT_TOKEN"
+Environment="TELEGRAM_CHAT_ID=YOUR_TELEGRAM_CHAT_ID"
 ExecStart=/usr/bin/python3 main.py
 Restart=always
 RestartSec=10
@@ -184,8 +184,8 @@ docker run -d \
   --name polymarket-scanner \
   --restart unless-stopped \
   -e ALCHEMY_API_KEY="your_key" \
-  -e TELEGRAM_BOT_TOKEN="7989561870:AAG-W3B_DBIC78BM3Coe0rUdJV3_B-X0gzE" \
-  -e TELEGRAM_CHAT_ID="1563550509" \
+  -e TELEGRAM_BOT_TOKEN="YOUR_TELEGRAM_BOT_TOKEN" \
+  -e TELEGRAM_CHAT_ID="YOUR_TELEGRAM_CHAT_ID" \
   -v $(pwd)/data:/app/realtime_scanner \
   polymarket-scanner
 ```

@@ -36,8 +36,8 @@ In Railway dashboard:
 - Add:
   ```
   ALCHEMY_API_KEY=your_alchemy_key_here
-  TELEGRAM_BOT_TOKEN=7989561870:AAG-W3B_DBIC78BM3Coe0rUdJV3_B-X0gzE
-  TELEGRAM_CHAT_ID=1563550509
+  TELEGRAM_BOT_TOKEN=YOUR_TELEGRAM_BOT_TOKEN
+  TELEGRAM_CHAT_ID=YOUR_TELEGRAM_CHAT_ID
   ```
 
 ### 4. Verify It's Running
@@ -57,8 +57,8 @@ python3 test_setup.py
 
 # Set environment variables
 export ALCHEMY_API_KEY="your_key"
-export TELEGRAM_BOT_TOKEN="7989561870:AAG-W3B_DBIC78BM3Coe0rUdJV3_B-X0gzE"
-export TELEGRAM_CHAT_ID="1563550509"
+export TELEGRAM_BOT_TOKEN="YOUR_TELEGRAM_BOT_TOKEN"
+export TELEGRAM_CHAT_ID="YOUR_TELEGRAM_CHAT_ID"
 
 # Run scanner
 cd realtime_scanner
