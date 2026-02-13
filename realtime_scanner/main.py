@@ -138,7 +138,7 @@ class RealtimeScanner:
         print(f"Scan interval: Every {config.SCAN_INTERVAL_SECONDS} seconds")
         print(f"Min wallet volume: ${config.MIN_WALLET_VOLUME}")
         print(f"Min conviction: {config.MIN_CONVICTION*100}%")
-        print(f"Min wallets for signal: {config.MIN_WALLETS_CLUSTER}")
+        print(f"Min wallets for signal: {config.MIN_WALLETS_CLUSTER} (ANY wallet counts!)")
         print("="*60)
         print()
 

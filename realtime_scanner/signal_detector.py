@@ -21,11 +21,11 @@ class SignalDetector:
     def register_default_patterns(self):
         """Register default patterns"""
 
-        # Pattern 1: High Conviction Cluster (your main pattern)
+        # Pattern 1: High Conviction Signal (your main pattern)
         self.register_pattern(
             self.pattern_high_conviction_cluster,
-            "High Conviction Cluster",
-            "5+ wallets with $1K+ volume, 80%+ conviction on same outcome"
+            "High Conviction Signal",
+            "Wallet(s) with $1K+ volume, 80%+ conviction on same outcome"
         )
 
         # Pattern 2: Whale Entry (single large wallet)
@@ -60,8 +60,8 @@ class SignalDetector:
 
     def pattern_high_conviction_cluster(self, clusters, trades, wallet_tracker):
         """
-        Pattern 1: High Conviction Cluster
-        YOUR MAIN PATTERN - 5+ wallets, $1K+, 80%+ conviction
+        Pattern 1: High Conviction Signal
+        YOUR MAIN PATTERN - ANY wallet(s) with $1K+, 80%+ conviction
         """
         signals = []
 
@@ -74,14 +74,27 @@ class SignalDetector:
             if 'price' in cluster and cluster['price'] > config.MAX_PRICE:
                 continue
 
-            # Calculate conviction score
-            conviction_score = "VERY HIGH"
-            if cluster['num_wallets'] >= 20 and cluster.get('price', 1) < 0.30:
+            # Calculate conviction score based on wallets, volume, and price
+            num_wallets = cluster['num_wallets']
+            price = cluster.get('price', 1)
+            total_volume = cluster['total_volume']
+            avg_conviction = cluster['avg_conviction']
+
+            # Score based on multiple factors
+            if num_wallets >= 20 and price < 0.30:
                 conviction_score = "VERY HIGH"
-            elif cluster['num_wallets'] >= 10 and cluster.get('price', 1) < 0.40:
+            elif num_wallets >= 10 and price < 0.40:
+                conviction_score = "VERY HIGH"
+            elif num_wallets >= 5 and price < 0.50:
                 conviction_score = "HIGH"
-            elif cluster['num_wallets'] >= 5 and cluster.get('price', 1) < 0.50:
+            elif num_wallets >= 3 and avg_conviction >= 0.90:
+                conviction_score = "HIGH"
+            elif num_wallets >= 2 and total_volume >= 5000:
                 conviction_score = "MEDIUM"
+            elif num_wallets == 1 and total_volume >= 5000 and avg_conviction >= 0.90:
+                conviction_score = "MEDIUM"
+            else:
+                conviction_score = "LOW"
 
             signals.append({
                 'type': 'cluster',

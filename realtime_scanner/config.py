@@ -16,7 +16,7 @@ BLOCK_BATCH_SIZE = 1000  # Process blocks in batches
 # ========== SIGNAL DETECTION THRESHOLDS ==========
 MIN_WALLET_VOLUME = 1000  # $1K minimum per wallet
 MIN_CONVICTION = 0.80  # 80% of wallet capital on single position
-MIN_WALLETS_CLUSTER = 5  # 5+ wallets = signal
+MIN_WALLETS_CLUSTER = 1  # ANY high-conviction wallet = signal (was 5)
 MAX_PRICE = 0.60  # Only bets ≤$0.60 (underdogs)
 LOOKBACK_HOURS = 48  # Track positions from last 48 hours
 

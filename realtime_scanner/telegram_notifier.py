@@ -101,6 +101,10 @@ class TelegramNotifier:
         # Get category
         category = cluster.get('category', 'Unknown')
 
+        # Format wallet count (singular vs plural)
+        num_wallets = cluster['num_wallets']
+        wallet_text = f"{num_wallets} high-conviction wallet" if num_wallets == 1 else f"{num_wallets} high-conviction wallets"
+
         message = f"""
 {emoji} <b>NEW {signal['pattern_name'].upper()}</b> {emoji}
 
@@ -111,9 +115,9 @@ class TelegramNotifier:
 
 💰 <b>Entry Price:</b> ${price:.3f} ({price*100:.1f}%)
 📊 <b>Potential ROI:</b> +{roi:.0f}%
-👥 <b>Wallets:</b> {cluster['num_wallets']} high-conviction wallets
+👥 <b>Wallets:</b> {wallet_text}
 💵 <b>Total Volume:</b> ${cluster['total_volume']:,.0f}
-🎯 <b>Avg Conviction:</b> {cluster['avg_conviction']*100:.0f}%
+🎯 <b>Conviction:</b> {cluster['avg_conviction']*100:.0f}%
 
 <b>⏰ Timeline:</b>
 • First Entry: {cluster['first_entry'].strftime('%m/%d %H:%M')}
@@ -203,13 +207,18 @@ class TelegramNotifier:
 Monitoring Polygon blockchain for insider signals!
 
 <b>Active Patterns:</b>
-1. High Conviction Cluster (5+ wallets, $1K+, 80%+ focus)
+1. High Conviction Signal (ANY wallet $1K+, 80%+ focus)
 2. Whale Entry ($10K+ single wallet)
 3. Synchronized Entry (coordinated timing)
 
 <b>Tracking:</b>
 • Politics (90% WR, 207% ROI)
 • Financial (100% WR, 3,471% ROI)
+
+<b>Thresholds:</b>
+• Min Volume: ${config.MIN_WALLET_VOLUME}
+• Min Conviction: {int(config.MIN_CONVICTION*100)}%
+• Min Wallets: {config.MIN_WALLETS_CLUSTER}+ (ANY wallet counts!)
 
 <b>Scan Interval:</b> Every {config.SCAN_INTERVAL_SECONDS//60} minutes
 
