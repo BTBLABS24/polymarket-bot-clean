@@ -66,12 +66,17 @@ class SignalDetector:
         signals = []
 
         for cluster in clusters:
+            # Skip unknown markets (inactive, no data available)
+            if cluster.get('question', 'Unknown') in ['Unknown', 'UNKNOWN']:
+                continue
+
             # Filter by category
             if 'category' not in cluster or cluster['category'] not in ['Politics', 'Financial']:
                 continue
 
-            # Filter by price
-            if 'price' in cluster and cluster['price'] > config.MAX_PRICE:
+            # Filter by price (skip if no valid price)
+            price = cluster.get('price', 0)
+            if price == 0 or price > config.MAX_PRICE:
                 continue
 
             # Calculate conviction score based on wallets, volume, and price
@@ -117,6 +122,10 @@ class SignalDetector:
         )
 
         for position in high_conviction:
+            # Skip unknown markets/outcomes
+            if position.get('outcome', 'Unknown') in ['Unknown', 'UNKNOWN']:
+                continue
+
             # Check if this is a new entry (within last hour)
             time_since_entry = (datetime.now() - position['timestamp']).total_seconds() / 3600
 
@@ -137,6 +146,10 @@ class SignalDetector:
         signals = []
 
         for cluster in clusters:
+            # Skip unknown markets
+            if cluster.get('question', 'Unknown') in ['Unknown', 'UNKNOWN']:
+                continue
+
             if cluster['num_wallets'] < 5:
                 continue
 

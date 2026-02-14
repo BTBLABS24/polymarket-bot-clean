@@ -160,11 +160,13 @@ class TelegramNotifier:
         elif category == 'Financial':
             message += "• Financial: 100% WR, 3,471% avg ROI\n"
 
-        # Add note if market name unknown
+        # Add Polymarket link
+        polymarket_link = f"https://polymarket.com"
         if question == 'Unknown' or question == 'UNKNOWN':
-            message += "\n<i>⚠️ Market name unavailable - check Polymarket for token details</i>\n"
+            message += f"\n<i>⚠️ Inactive market - search Polymarket for token:</i>\n"
+            message += f"<code>{market_id[:32]}</code>\n"
 
-        message += "\n<b>🎲 Check Polymarket/Kalshi for this market!</b>"
+        message += f"\n<b>🎲 <a href='{polymarket_link}'>Check on Polymarket</a> or Kalshi!</b>"
 
         return message
 
