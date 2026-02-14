@@ -11,6 +11,14 @@ import config
 class BlockchainScanner:
     def __init__(self):
         self.w3 = Web3(Web3.HTTPProvider(config.POLYGON_RPC))
+
+        # Add POA middleware for Polygon
+        try:
+            from web3.middleware import ExtraDataToPOAMiddleware
+            self.w3.middleware_onion.inject(ExtraDataToPOAMiddleware, layer=0)
+        except:
+            pass  # Middleware not needed or already injected
+
         self.current_block = None
         self.market_cache = {}  # market_id -> {question, tokens, etc}
 
@@ -36,26 +44,95 @@ class BlockchainScanner:
             return None
 
     def parse_trade_from_log(self, log):
-        """Parse trade data from transaction log"""
-        try:
-            # This is simplified - real implementation would decode ABI
-            # For Polymarket CTF Exchange, we'd decode:
-            # - maker/taker addresses
-            # - token IDs (which encode market + outcome)
-            # - amounts
-            # - price
+        """
+        Parse trade data from OrderFilled event log
 
-            # Placeholder structure
-            return {
-                'wallet': log.get('address', '0x0'),
-                'market_id': 'unknown',
-                'outcome': 'unknown',
-                'volume_usd': 0,
-                'price': 0,
-                'timestamp': datetime.now(),
-                'block_number': log.get('blockNumber', 0),
-                'tx_hash': log.get('transactionHash', '0x0')
-            }
+        Event structure:
+        - topics[0] = event signature
+        - topics[1] = orderHash (indexed)
+        - topics[2] = maker address (indexed, 32 bytes padded)
+        - topics[3] = taker address (indexed, 32 bytes padded)
+        - data = [makerAssetId, takerAssetId, makerAmountFilled, takerAmountFilled, fee]
+        """
+        try:
+            topics = log.get('topics', [])
+            raw_data = log.get('data', '0x')
+
+            # Convert data to hex string if it's bytes
+            if isinstance(raw_data, bytes):
+                data = raw_data.hex()
+            elif isinstance(raw_data, str):
+                data = raw_data[2:] if raw_data.startswith('0x') else raw_data
+            else:
+                return None
+
+            # Need at least 4 topics and data (5 uint256 = 160 bytes = 320 hex chars)
+            # But sometimes data is 158 bytes, so let's be flexible
+            if len(topics) < 4 or len(data) < 300:
+                return None
+
+            # Extract maker and taker addresses from topics
+            # Topics are 32 bytes, addresses are last 20 bytes
+            def extract_address(topic):
+                if isinstance(topic, bytes):
+                    # Already bytes, take last 20 bytes
+                    return '0x' + topic[-20:].hex().lower()
+                elif hasattr(topic, 'hex'):
+                    # HexBytes object
+                    return '0x' + topic.hex()[26:].lower()
+                elif isinstance(topic, str):
+                    # Hex string
+                    hex_str = topic[2:] if topic.startswith('0x') else topic
+                    return '0x' + hex_str[24:].lower()
+                return '0x0'
+
+            maker = extract_address(topics[2])
+            taker = extract_address(topics[3])
+
+            # Extract data fields (each is 64 hex chars = 32 bytes)
+            maker_asset_id = int(data[0:64], 16)
+            taker_asset_id = int(data[64:128], 16)
+            maker_amount = int(data[128:192], 16)
+            taker_amount = int(data[192:256], 16)
+            fee = int(data[256:320], 16)
+
+            # Convert amounts from USDC (6 decimals)
+            maker_volume_usd = maker_amount / 1e6
+            taker_volume_usd = taker_amount / 1e6
+
+            # Calculate price (simplified)
+            price = (taker_amount / maker_amount) if maker_amount > 0 else 0
+
+            block_num = log.get('blockNumber', 0)
+            tx_hash = log.get('transactionHash', '0x0')
+            if hasattr(tx_hash, 'hex'):
+                tx_hash = tx_hash.hex()
+
+            # Return TWO trades: one for maker, one for taker
+            return [
+                {
+                    'wallet': maker,
+                    'market_id': str(maker_asset_id),
+                    'outcome': 'YES',  # Simplified - would need token mapping
+                    'volume_usd': maker_volume_usd,
+                    'price': price,
+                    'timestamp': datetime.now(),
+                    'block_number': block_num,
+                    'tx_hash': str(tx_hash),
+                    'side': 'maker'
+                },
+                {
+                    'wallet': taker,
+                    'market_id': str(taker_asset_id),
+                    'outcome': 'YES',  # Simplified - would need token mapping
+                    'volume_usd': taker_volume_usd,
+                    'price': 1 - price if price > 0 else 0,
+                    'timestamp': datetime.now(),
+                    'block_number': block_num,
+                    'tx_hash': str(tx_hash),
+                    'side': 'taker'
+                }
+            ]
         except Exception as e:
             print(f"Error parsing log: {e}")
             return None
@@ -73,9 +150,13 @@ class BlockchainScanner:
             })
 
             for log in logs:
-                trade = self.parse_trade_from_log(log)
-                if trade:
-                    trades.append(trade)
+                parsed = self.parse_trade_from_log(log)
+                if parsed:
+                    # parse_trade_from_log returns a list of trades (maker + taker)
+                    if isinstance(parsed, list):
+                        trades.extend(parsed)
+                    else:
+                        trades.append(parsed)
 
         except Exception as e:
             print(f"Error fetching logs: {e}")
