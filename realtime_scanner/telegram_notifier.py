@@ -1,16 +1,17 @@
 """
 Telegram Notifier
 Sends formatted alerts to Telegram
+Uses direct requests API (matches proven p-signals implementation)
 """
-from telegram import Bot
-import asyncio
+import requests
 import config
 import json
 from datetime import datetime
 
 class TelegramNotifier:
     def __init__(self):
-        self.bot = Bot(token=config.TELEGRAM_BOT_TOKEN) if config.TELEGRAM_BOT_TOKEN else None
+        self.bot_token = config.TELEGRAM_BOT_TOKEN if config.TELEGRAM_BOT_TOKEN else None
+        self.chat_id = config.TELEGRAM_CHAT_ID if config.TELEGRAM_CHAT_ID else None
         self.sent_signals = set()  # Track sent signals to avoid duplicates
         self.load_sent_history()
 
@@ -28,9 +29,9 @@ class TelegramNotifier:
         with open('sent_signals.json', 'w') as f:
             json.dump(list(self.sent_signals), f)
 
-    async def send_signal_alert(self, signal):
+    def send_signal_alert(self, signal):
         """Send Telegram alert for a detected signal"""
-        if not self.bot or not config.TELEGRAM_CHAT_ID:
+        if not self.bot_token or not self.chat_id:
             print(f"[TELEGRAM] Would send: {signal['pattern_name']}")
             return
 
@@ -48,23 +49,36 @@ class TelegramNotifier:
         # Format message
         message = self.format_signal_message(signal)
 
-        # Send
-        try:
-            await self.bot.send_message(
-                chat_id=config.TELEGRAM_CHAT_ID,
-                text=message,
-                parse_mode='HTML',
-                disable_web_page_preview=True
-            )
+        # Send using direct Telegram API (matches p-signals pattern)
+        success = self._send_telegram(message)
 
+        if success:
             # Track as sent
             self.sent_signals.add(signal_id)
             self.save_sent_history()
-
             print(f"✅ Sent alert: {signal['pattern_name']}")
+        else:
+            print(f"❌ Failed to send Telegram alert")
 
+    def _send_telegram(self, message, parse_mode="HTML"):
+        """Send message via direct Telegram API call (matches p-signals implementation)"""
+        if not self.bot_token or not self.chat_id:
+            return False
+
+        url = f"https://api.telegram.org/bot{self.bot_token}/sendMessage"
+        payload = {
+            "chat_id": self.chat_id,
+            "text": message,
+            "parse_mode": parse_mode,
+            "disable_web_page_preview": True
+        }
+
+        try:
+            resp = requests.post(url, json=payload, timeout=10)
+            return resp.status_code == 200
         except Exception as e:
-            print(f"❌ Failed to send Telegram: {e}")
+            print(f"Telegram error: {e}")
+            return False
 
     def format_signal_message(self, signal):
         """Format signal data into Telegram message"""
@@ -196,9 +210,9 @@ class TelegramNotifier:
 <i>New signal detected - check details above</i>
 """
 
-    async def send_startup_message(self):
+    def send_startup_message(self):
         """Send bot startup notification"""
-        if not self.bot or not config.TELEGRAM_CHAT_ID:
+        if not self.bot_token or not self.chat_id:
             return
 
         message = f"""
@@ -207,36 +221,31 @@ class TelegramNotifier:
 Monitoring Polygon blockchain for insider signals!
 
 <b>Active Patterns:</b>
-1. High Conviction Signal (ANY wallet $1K+, 80%+ focus)
+1. High Conviction Cluster (5+ wallets, $2K+, 85%+ conviction)
 2. Whale Entry ($10K+ single wallet)
 3. Synchronized Entry (coordinated timing)
 
 <b>Tracking:</b>
-• Politics (90% WR, 207% ROI)
+• Politics (90% WR, 223% ROI)
 • Financial (100% WR, 3,471% ROI)
 
 <b>Thresholds:</b>
 • Min Volume: ${config.MIN_WALLET_VOLUME}
 • Min Conviction: {int(config.MIN_CONVICTION*100)}%
-• Min Wallets: {config.MIN_WALLETS_CLUSTER}+ (ANY wallet counts!)
+• Min Wallets: {config.MIN_WALLETS_CLUSTER}+
 
 <b>Scan Interval:</b> Every {config.SCAN_INTERVAL_SECONDS//60} minutes
 
 Ready to detect signals! 🚀
 """
 
-        try:
-            await self.bot.send_message(
-                chat_id=config.TELEGRAM_CHAT_ID,
-                text=message,
-                parse_mode='HTML'
-            )
-        except Exception as e:
-            print(f"Failed to send startup message: {e}")
+        success = self._send_telegram(message)
+        if not success:
+            print(f"Failed to send startup message")
 
-    async def send_daily_summary(self, stats):
+    def send_daily_summary(self, stats):
         """Send daily summary of detected signals"""
-        if not self.bot or not config.TELEGRAM_CHAT_ID:
+        if not self.bot_token or not self.chat_id:
             return
 
         message = f"""
@@ -250,11 +259,17 @@ Ready to detect signals! 🚀
 <b>Status:</b> ✅ Running
 """
 
-        try:
-            await self.bot.send_message(
-                chat_id=config.TELEGRAM_CHAT_ID,
-                text=message,
-                parse_mode='HTML'
-            )
-        except Exception as e:
-            print(f"Failed to send summary: {e}")
+        success = self._send_telegram(message)
+        if not success:
+            print(f"Failed to send summary")
+
+    def test_connection(self):
+        """Test Telegram connection (matches p-signals pattern)"""
+        message = "🟢 <b>Polymarket Scanner Connected!</b>\n\nYou will receive insider trading signals here."
+        success = self._send_telegram(message)
+        if success:
+            print("✅ Telegram test successful!")
+            return True
+        else:
+            print("❌ Telegram test failed!")
+            return False

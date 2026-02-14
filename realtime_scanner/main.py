@@ -101,7 +101,7 @@ class RealtimeScanner:
 
             # 7. Send Telegram alerts
             for signal in signals:
-                await self.telegram_notifier.send_signal_alert(signal)
+                self.telegram_notifier.send_signal_alert(signal)
                 self.stats['signals_detected'] += 1
 
             # 8. Save state
@@ -128,7 +128,7 @@ class RealtimeScanner:
         """Main scanner loop"""
 
         # Send startup message
-        await self.telegram_notifier.send_startup_message()
+        self.telegram_notifier.send_startup_message()
 
         print("="*60)
         print("REAL-TIME POLYMARKET SCANNER")
@@ -153,7 +153,7 @@ class RealtimeScanner:
                 # Send daily summary
                 hours_since_summary = (datetime.now() - last_daily_summary).total_seconds() / 3600
                 if hours_since_summary >= 24:
-                    await self.telegram_notifier.send_daily_summary(self.stats)
+                    self.telegram_notifier.send_daily_summary(self.stats)
                     last_daily_summary = datetime.now()
 
                 # Wait for next cycle
