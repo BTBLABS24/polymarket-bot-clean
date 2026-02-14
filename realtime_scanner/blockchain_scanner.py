@@ -176,13 +176,20 @@ class BlockchainScanner:
             # Build lookup
             markets_lookup = {m.get('conditionId'): m for m in markets_data}
 
-            # Enrich trades
+            # Enrich trades and cache market data
             for trade in trades:
                 if trade['market_id'] in markets_lookup:
                     market = markets_lookup[trade['market_id']]
                     trade['question'] = market.get('question', 'Unknown')
                     trade['category'] = self.categorize_market(market.get('question', ''))
                     trade['tokens'] = market.get('tokens', [])
+
+                    # Cache market data for later lookups
+                    self.market_cache[trade['market_id']] = {
+                        'question': trade['question'],
+                        'category': trade['category'],
+                        'tokens': trade['tokens']
+                    }
 
         except Exception as e:
             print(f"Error enriching trades: {e}")

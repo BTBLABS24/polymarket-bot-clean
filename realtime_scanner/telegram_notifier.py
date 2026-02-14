@@ -159,17 +159,29 @@ class TelegramNotifier:
         """Format whale entry signal"""
         position = signal['position']
 
+        # Calculate potential ROI based on entry price
+        price = position.get('price', 0.5)
+        roi = (1 / price - 1) * 100 if price > 0 else 0
+
+        # Get category
+        category = position.get('category', 'Unknown')
+
         message = f"""
 🐋 <b>WHALE ENTRY DETECTED</b>
 
 <b>Pattern:</b> {signal['pattern_description']}
 
-<b>Wallet:</b> {position['wallet'][:10]}...
+<b>Event:</b> {position.get('question', 'Unknown')}
+<b>Outcome:</b> {position['outcome']}
+
+💰 <b>Entry Price:</b> ${price:.3f} ({price*100:.1f}%)
+📊 <b>Potential ROI:</b> +{roi:.0f}%
+
+<b>Wallet:</b> {position['wallet'][:16]}...
 <b>Position Size:</b> ${position['position_volume']:,.0f}
 <b>Conviction:</b> {position['conviction']*100:.0f}%
 
-<b>Market:</b> {position['market_id'][:10]}...
-<b>Outcome:</b> {position['outcome']}
+<b>Category:</b> {category}
 
 <i>Large wallet just entered with high conviction</i>
 
@@ -182,6 +194,10 @@ class TelegramNotifier:
         cluster = signal['cluster']
         time_window = signal['time_window_hours']
 
+        # Calculate ROI
+        price = cluster.get('price', 0.5)
+        roi = (1 / price - 1) * 100 if price > 0 else 0
+
         message = f"""
 ⚡ <b>SYNCHRONIZED ENTRY</b>
 
@@ -189,10 +205,14 @@ class TelegramNotifier:
 
 <b>{cluster['num_wallets']} wallets entered within {time_window:.1f} hours!</b>
 
-<b>Market:</b> {cluster.get('question', 'Unknown')}
+<b>Event:</b> {cluster.get('question', 'Unknown')}
 <b>Outcome:</b> {cluster['outcome']}
 
+💰 <b>Entry Price:</b> ${price:.3f} ({price*100:.1f}%)
+📊 <b>Potential ROI:</b> +{roi:.0f}%
+
 <b>Total Volume:</b> ${cluster['total_volume']:,.0f}
+<b>Conviction:</b> {cluster['avg_conviction']*100:.0f}%
 
 <i>Coordinated entry suggests insider knowledge</i>
 

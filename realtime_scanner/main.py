@@ -90,7 +90,30 @@ class RealtimeScanner:
 
             print(f"✅ Detected {len(clusters)} wallet clusters")
 
-            # 6. Run signal detection patterns
+            # 6. Enrich clusters with market metadata
+            for cluster in clusters:
+                market_id = cluster['market_id']
+                if market_id in self.blockchain_scanner.market_cache:
+                    metadata = self.blockchain_scanner.market_cache[market_id]
+                    cluster['question'] = metadata.get('question', 'Unknown')
+                    cluster['category'] = metadata.get('category', 'Unknown')
+
+                # Calculate average entry price from the wallets in this cluster
+                prices = []
+                for wallet_position in cluster['wallets']:
+                    # Find matching trades for this wallet/market to get price
+                    for trade in trades_this_cycle:
+                        if (trade['wallet'] == wallet_position['wallet'] and
+                            trade['market_id'] == market_id and
+                            trade.get('price')):
+                            prices.append(trade['price'])
+
+                if prices:
+                    cluster['price'] = sum(prices) / len(prices)
+                else:
+                    cluster['price'] = 0.5  # Default if no price data
+
+            # 7. Run signal detection patterns
             signals = self.signal_detector.detect_all(
                 clusters,
                 trades_this_cycle,
@@ -99,16 +122,38 @@ class RealtimeScanner:
 
             print(f"🚨 Found {len(signals)} signals!")
 
-            # 7. Send Telegram alerts
+            # 8. Enrich whale/synchronized signals with market metadata
+            for signal in signals:
+                # For whale signals, enrich the position
+                if signal['type'] == 'whale':
+                    market_id = signal['position']['market_id']
+                    if market_id in self.blockchain_scanner.market_cache:
+                        metadata = self.blockchain_scanner.market_cache[market_id]
+                        signal['position']['question'] = metadata.get('question', 'Unknown')
+                        signal['position']['category'] = metadata.get('category', 'Unknown')
+
+                    # Find entry price from trades
+                    wallet = signal['position']['wallet']
+                    for trade in trades_this_cycle:
+                        if (trade['wallet'] == wallet and
+                            trade['market_id'] == market_id and
+                            trade.get('price')):
+                            signal['position']['price'] = trade['price']
+                            break
+
+                    if 'price' not in signal['position']:
+                        signal['position']['price'] = 0.5  # Default
+
+            # 9. Send Telegram alerts
             for signal in signals:
                 self.telegram_notifier.send_signal_alert(signal)
                 self.stats['signals_detected'] += 1
 
-            # 8. Save state
+            # 10. Save state
             self.blockchain_scanner.save_checkpoint(latest_block)
             self.wallet_tracker.save_state()
 
-            # 9. Cleanup old data
+            # 11. Cleanup old data
             self.wallet_tracker.cleanup_old_data(hours=config.LOOKBACK_HOURS)
 
             # Update stats
