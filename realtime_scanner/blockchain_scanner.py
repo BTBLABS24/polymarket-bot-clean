@@ -100,8 +100,9 @@ class BlockchainScanner:
             maker_volume_usd = maker_amount / 1e6
             taker_volume_usd = taker_amount / 1e6
 
-            # Calculate price (simplified)
-            price = (taker_amount / maker_amount) if maker_amount > 0 else 0
+            # Price will be filled in during enrichment (from CLOB API)
+            # Don't calculate from amounts - that's not the market price
+            price = 0
 
             block_num = log.get('blockNumber', 0)
             tx_hash = log.get('transactionHash', '0x0')
@@ -109,13 +110,14 @@ class BlockchainScanner:
                 tx_hash = tx_hash.hex()
 
             # Return TWO trades: one for maker, one for taker
+            # Price and outcome will be enriched later from CLOB API
             return [
                 {
                     'wallet': maker,
                     'market_id': str(maker_asset_id),
-                    'outcome': 'YES',  # Simplified - would need token mapping
+                    'outcome': 'Unknown',  # Will be filled during enrichment
                     'volume_usd': maker_volume_usd,
-                    'price': price,
+                    'price': 0,  # Will be filled during enrichment
                     'timestamp': datetime.now(),
                     'block_number': block_num,
                     'tx_hash': str(tx_hash),
@@ -124,9 +126,9 @@ class BlockchainScanner:
                 {
                     'wallet': taker,
                     'market_id': str(taker_asset_id),
-                    'outcome': 'YES',  # Simplified - would need token mapping
+                    'outcome': 'Unknown',  # Will be filled during enrichment
                     'volume_usd': taker_volume_usd,
-                    'price': 1 - price if price > 0 else 0,
+                    'price': 0,  # Will be filled during enrichment
                     'timestamp': datetime.now(),
                     'block_number': block_num,
                     'tx_hash': str(tx_hash),
@@ -164,35 +166,67 @@ class BlockchainScanner:
         return trades
 
     def enrich_with_polymarket_data(self, trades):
-        """Add market metadata to trades"""
-        # Get unique market IDs
-        market_ids = set(t['market_id'] for t in trades if t['market_id'] != 'unknown')
-
-        # Fetch market data from Polymarket API
+        """Add market metadata to trades using token IDs"""
         try:
-            response = requests.get('https://gamma-api.polymarket.com/markets', timeout=10)
-            markets_data = response.json()
+            # Fetch CLOB market data (includes token_id → price mapping)
+            response = requests.get('https://clob.polymarket.com/sampling-simplified-markets', timeout=10)
+            clob_data = response.json()
 
-            # Build lookup
-            markets_lookup = {m.get('conditionId'): m for m in markets_data}
-
-            # Enrich trades and cache market data
-            for trade in trades:
-                if trade['market_id'] in markets_lookup:
-                    market = markets_lookup[trade['market_id']]
-                    trade['question'] = market.get('question', 'Unknown')
-                    trade['category'] = self.categorize_market(market.get('question', ''))
-                    trade['tokens'] = market.get('tokens', [])
-
-                    # Cache market data for later lookups
-                    self.market_cache[trade['market_id']] = {
-                        'question': trade['question'],
-                        'category': trade['category'],
-                        'tokens': trade['tokens']
+            # Build token_id → market data lookup
+            token_lookup = {}
+            for market in clob_data.get('data', []):
+                condition_id = market.get('condition_id', '')
+                for token in market.get('tokens', []):
+                    token_id = str(token.get('token_id', ''))
+                    token_lookup[token_id] = {
+                        'condition_id': condition_id,
+                        'outcome': token.get('outcome', 'Unknown'),
+                        'price': float(token.get('price', 0.5))
                     }
+
+            # Fetch gamma API for market questions
+            response2 = requests.get('https://gamma-api.polymarket.com/markets', timeout=10)
+            markets_data = response2.json()
+
+            # Build condition_id → question lookup
+            condition_lookup = {}
+            for market in markets_data:
+                cid = market.get('conditionId', '')
+                if cid:
+                    condition_lookup[cid] = {
+                        'question': market.get('question', 'Unknown'),
+                        'category': self.categorize_market(market.get('question', ''))
+                    }
+
+            # Enrich trades with both price and question
+            for trade in trades:
+                token_id = str(trade['market_id'])
+
+                # Get price and outcome from token
+                if token_id in token_lookup:
+                    token_data = token_lookup[token_id]
+                    trade['price'] = token_data['price']
+                    trade['outcome'] = token_data['outcome']
+
+                    # Get question from condition
+                    condition_id = token_data['condition_id']
+                    if condition_id in condition_lookup:
+                        market_data = condition_lookup[condition_id]
+                        trade['question'] = market_data['question']
+                        trade['category'] = market_data['category']
+
+                        # Cache for later
+                        self.market_cache[token_id] = {
+                            'question': trade['question'],
+                            'category': trade['category'],
+                            'price': trade['price'],
+                            'outcome': trade['outcome']
+                        }
 
         except Exception as e:
             print(f"Error enriching trades: {e}")
+            import traceback
+            traceback.print_exc()
 
         return trades
 

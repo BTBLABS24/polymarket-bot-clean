@@ -110,7 +110,7 @@ class TelegramNotifier:
 
         # Calculate ROI
         price = cluster.get('price', 0.5)
-        roi = (1 / price - 1) * 100 if price > 0 else 0
+        roi = (1 / price - 1) * 100 if price > 0 and price < 1 else 0
 
         # Get category
         category = cluster.get('category', 'Unknown')
@@ -119,12 +119,21 @@ class TelegramNotifier:
         num_wallets = cluster['num_wallets']
         wallet_text = f"{num_wallets} high-conviction wallet" if num_wallets == 1 else f"{num_wallets} high-conviction wallets"
 
+        # Format market display
+        question = cluster.get('question', 'Unknown')
+        market_id = cluster.get('market_id', '')
+        if question == 'Unknown' or question == 'UNKNOWN':
+            # Show shortened token ID
+            market_display = f"Token {market_id[:16]}..."
+        else:
+            market_display = question
+
         message = f"""
 {emoji} <b>NEW {signal['pattern_name'].upper()}</b> {emoji}
 
 <b>Pattern:</b> {signal['pattern_description']}
 
-<b>Event:</b> {cluster.get('question', 'Unknown')}
+<b>Market:</b> {market_display}
 <b>Outcome:</b> {cluster['outcome']}
 
 💰 <b>Entry Price:</b> ${price:.3f} ({price*100:.1f}%)
@@ -151,7 +160,11 @@ class TelegramNotifier:
         elif category == 'Financial':
             message += "• Financial: 100% WR, 3,471% avg ROI\n"
 
-        message += "\n<b>🎲 Check Kalshi for this market!</b>"
+        # Add note if market name unknown
+        if question == 'Unknown' or question == 'UNKNOWN':
+            message += "\n<i>⚠️ Market name unavailable - check Polymarket for token details</i>\n"
+
+        message += "\n<b>🎲 Check Polymarket/Kalshi for this market!</b>"
 
         return message
 
@@ -161,17 +174,25 @@ class TelegramNotifier:
 
         # Calculate potential ROI based on entry price
         price = position.get('price', 0.5)
-        roi = (1 / price - 1) * 100 if price > 0 else 0
+        roi = (1 / price - 1) * 100 if price > 0 and price < 1 else 0
 
         # Get category
         category = position.get('category', 'Unknown')
+
+        # Format market display
+        question = position.get('question', 'Unknown')
+        market_id = position.get('market_id', '')
+        if question == 'Unknown' or question == 'UNKNOWN':
+            market_display = f"Token {market_id[:16]}..."
+        else:
+            market_display = question
 
         message = f"""
 🐋 <b>WHALE ENTRY DETECTED</b>
 
 <b>Pattern:</b> {signal['pattern_description']}
 
-<b>Event:</b> {position.get('question', 'Unknown')}
+<b>Market:</b> {market_display}
 <b>Outcome:</b> {position['outcome']}
 
 💰 <b>Entry Price:</b> ${price:.3f} ({price*100:.1f}%)
@@ -196,7 +217,15 @@ class TelegramNotifier:
 
         # Calculate ROI
         price = cluster.get('price', 0.5)
-        roi = (1 / price - 1) * 100 if price > 0 else 0
+        roi = (1 / price - 1) * 100 if price > 0 and price < 1 else 0
+
+        # Format market display
+        question = cluster.get('question', 'Unknown')
+        market_id = cluster.get('market_id', '')
+        if question == 'Unknown' or question == 'UNKNOWN':
+            market_display = f"Token {market_id[:16]}..."
+        else:
+            market_display = question
 
         message = f"""
 ⚡ <b>SYNCHRONIZED ENTRY</b>
@@ -205,7 +234,7 @@ class TelegramNotifier:
 
 <b>{cluster['num_wallets']} wallets entered within {time_window:.1f} hours!</b>
 
-<b>Event:</b> {cluster.get('question', 'Unknown')}
+<b>Market:</b> {market_display}
 <b>Outcome:</b> {cluster['outcome']}
 
 💰 <b>Entry Price:</b> ${price:.3f} ({price*100:.1f}%)
